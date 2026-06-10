@@ -1,1 +1,2 @@
 plugin-a app v1
+plugin-a edit s4
