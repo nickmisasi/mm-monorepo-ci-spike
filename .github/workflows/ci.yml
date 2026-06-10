@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+      plugin-a: ${{ steps.filter.outputs.plugin-a }}
+      plugin-b: ${{ steps.filter.outputs.plugin-b }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core:
+              - 'core/**'
+            plugin-a:
+              - 'core-plugins/plugin-a/**'
+            plugin-b:
+              - 'core-plugins/plugin-b/**'
+
+  plugin-a:
+    needs: changes
+    if: needs.changes.outputs.plugin-a == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash core-plugins/plugin-a/test.sh
+
+  plugin-b:
+    needs: changes
+    if: needs.changes.outputs.plugin-b == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash core-plugins/plugin-b/test.sh
+
+  gate:
+    needs: [changes, plugin-a, plugin-b]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate needed job results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          PLUGIN_A_RESULT: ${{ needs.plugin-a.result }}
+          PLUGIN_B_RESULT: ${{ needs.plugin-b.result }}
+        run: |
+          echo "changes=$CHANGES_RESULT plugin-a=$PLUGIN_A_RESULT plugin-b=$PLUGIN_B_RESULT"
+          # Treat success and skipped as pass; fail on failure or cancelled.
+          for r in "$CHANGES_RESULT" "$PLUGIN_A_RESULT" "$PLUGIN_B_RESULT"; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "Gate failing because a needed job result was: $r"
+              exit 1
+            fi
+          done
+          echo "Gate passing: all needed jobs are success or skipped."
