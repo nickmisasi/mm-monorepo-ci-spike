@@ -1,1 +1,2 @@
 core app v1
+core edit s3
