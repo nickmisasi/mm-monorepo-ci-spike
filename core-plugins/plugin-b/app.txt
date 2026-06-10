@@ -1,1 +1,2 @@
 plugin-b app v1
+plugin-b edit s4
