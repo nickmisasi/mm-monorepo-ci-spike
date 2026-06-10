@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "plugin-a test ok"
-exit 0
+echo "plugin-a test FAIL"
+exit 1
